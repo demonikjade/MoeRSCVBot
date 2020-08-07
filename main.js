@@ -6,6 +6,7 @@ const config = require('./config.js');
 
 // create an instance of a Discord Client, and call it bot
 const bot = new Discord.Client();
+// const GCM = new Discord.GuildChannelManager();
 
 // the token of your bot - https://discordapp.com/developers/applications/me
 const token = config.token;
@@ -20,11 +21,13 @@ function getPong(max) {
 
 
 
-
 // the ready event is vital, it means that your bot will only start reacting to information
 // from Discord _after_ ready is emitted.
+var NOTIFY_CHANNEL;
 bot.on('ready', () => {
   console.log('I am ready!');
+  NOTIFY_CHANNEL = bot.channels.fetch('741396405519908966'); // Channel to send notification
+  console.log('My notify channel is: '+NOTIFY_CHANNEL);
 });
 bot.on('error', function(err){
     // handle the error safely
@@ -93,6 +96,106 @@ bot.on('message', message => {
  
 
 });
+
+
+
+bot.on('inviteCreate', invite => {
+
+  console.log("My invite is: "+invite.code);
+
+  var inv_create_str = "";
+  inv_create_str += "Invite created, code: "+invite.code;
+  inv_create_str += "\n Inviter: "+invite.inviter.username;
+  inv_create_str += "\n Created at: "+invite.createdAt;
+  inv_create_str += "\n Expires at: "+invite.expiresAt;
+  inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
+  inv_create_str += "\n Channel: "+invite.channel;
+  inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
+
+
+  // var the_channel = GCM.resolve(invite.channel);
+
+  // Promise.resolve(NOTIFY_CHANNEL).then(function(chan) {
+  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
+  //   chan.send(inv_create_str);
+  // });
+
+  // var p = Promise.resolve(NOTIFY_CHANNEL);
+  // p.then(function(chan) {
+  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
+  //   chan.send(inv_create_str);
+  // });
+
+  NOTIFY_CHANNEL.then(function(chan) {
+      // here you can use the result of promiseB
+    console.log("Resolved Chan ID: "+chan.id); // "Success"
+    chan.send(inv_create_str);
+  });
+
+  // NOTIFY_CHANNEL.send(inv_create_str);
+
+});
+
+
+bot.on('inviteDelete', invite => {
+
+  console.log("Invite was deleted: "+invite.code);
+
+  var inv_create_str = "";
+  inv_create_str += "Invite deleted, code: "+invite.code;
+  inv_create_str += "\n Inviter: "+invite.inviter.username;
+  inv_create_str += "\n Created at: "+invite.createdAt;
+  inv_create_str += "\n Expires at: "+invite.expiresAt;
+  inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
+  inv_create_str += "\n Channel: "+invite.channel;
+  inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
+
+
+
+  NOTIFY_CHANNEL.then(function(chan) {
+      // here you can use the result of promiseB
+    console.log("Resolved Chan ID: "+chan.id); // "Success"
+    chan.send(inv_create_str);
+  });
+
+});
+
+
+
+
+bot.on('guildMemberAdd', gmember => {
+
+  console.log("New Adventurer: "+gmember.user.username);
+
+  gmember.guild.fetchInvites()
+    .then(invites => {
+      console.log(`Fetched ${invites.size} invites`);
+      invites
+        .each(invite => console.log(invite.code))
+    })
+    .catch(console.error);
+
+  
+
+  // var inv_create_str = "";
+  // inv_create_str += "Invite deleted, code: "+invite.code;
+  // inv_create_str += "\n Inviter: "+invite.inviter.username;
+  // inv_create_str += "\n Created at: "+invite.createdAt;
+  // inv_create_str += "\n Expires at: "+invite.expiresAt;
+  // inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
+  // inv_create_str += "\n Channel: "+invite.channel;
+  // inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
+
+
+
+  // NOTIFY_CHANNEL.then(function(chan) {
+  //     // here you can use the result of promiseB
+  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
+  //   chan.send(inv_create_str);
+  // });
+
+});
+
 
 
 
