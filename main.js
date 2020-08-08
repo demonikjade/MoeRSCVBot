@@ -13,13 +13,86 @@ const token = config.token;
 
 var fs = require('fs');
 
+var my_invites={list:[]};
 
 function getPong(max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max + 1)); //The maximum is inclusive and the minimum is inclusive 
 }
 
+function createMyInvite(invite) {
 
+  var inv = {
+    code: "unk",
+    channelName: "unk",
+    inviterObj: {},
+    maxUses: "unk",
+    createdAt: "unk",
+    inviteName: "unk",
+    expiresAt: "unk",
+    uses: "unk",
+    usedBy: []
+
+  };
+
+  var newb = {
+    username: invite.inviter.username,
+    id: invite.inviter.id
+  }
+
+  inv.code=invite.code;
+  inv.channelName=invite.guild.channels.resolve(invite.channel.id).toString();
+  inv.inviterObj=newb;
+  inv.maxUses=invite.maxUses;
+  inv.createdAt=invite.createdAt;
+  inv.inviteName=invite.inviteName;
+  inv.expiresAt=invite.expiresAt;
+  inv.uses=invite.uses;
+
+  my_invites.list.push(inv);
+
+
+  fs.writeFile('foo.json', JSON.stringify(my_invites), (err) => { if (err) throw err; });
+}
+
+
+function updateMyInvite(gmember) {
+
+  var notfound=true;
+
+  gmember.guild.fetchInvites()
+    .then(invites => {
+      console.log(`Fetched ${invites.size} invites`);
+      invites
+        .each(invite => {
+          var i;
+          for (i=0; i<my_invites.list.length; i++) {
+            var inv = my_invites.list[i];
+            // console.log("MOE_DEBUG code: "+inv.code+", "+invite.code);
+            if (inv.code==invite.code) {
+              // console.log("MOE_DEBUG uses: "+inv.uses+", "+invite.uses+", "+!isNaN(invite.uses));
+              if (notfound && invite.uses && !isNaN(invite.uses) && inv.uses != invite.uses) {
+                // console.log("MOE_DEBUG in: ");
+                notfound=false;
+                inv.uses = invite.uses;
+                var newb = {
+                  username: gmember.user.username,
+                  id: gmember.id
+                }
+                inv.usedBy.push(newb);
+              }
+            }
+            my_invites.list[i]=inv;
+
+            fs.writeFile('foo.json', JSON.stringify(my_invites), (err) => { if (err) throw err; });
+            // console.log("MOE_DEBUG: "+JSON.stringify(my_invites));
+          }
+        })
+    })
+    .catch(console.error);
+
+
+}
 
 // the ready event is vital, it means that your bot will only start reacting to information
 // from Discord _after_ ready is emitted.
@@ -28,6 +101,16 @@ bot.on('ready', () => {
   console.log('I am ready!');
   NOTIFY_CHANNEL = bot.channels.fetch('741396405519908966'); // Channel to send notification
   console.log('My notify channel is: '+NOTIFY_CHANNEL);
+
+  fs.readFile('foo.json', 'utf8', function readFileCallback(err, data){
+    if (err){
+        console.log(err);
+    } else {
+    my_invites = JSON.parse(data); //now it an object
+    // obj.table.push({id: 2, square:3}); //add some data
+    // json = JSON.stringify(obj); //convert it back to json
+    // fs.writeFile('myjsonfile.json', json, 'utf8', callback); // write it back 
+  }});
 });
 bot.on('error', function(err){
     // handle the error safely
@@ -46,7 +129,8 @@ const pingList = ["pong","pong","pong","pong","pong","pong","pong","pong","pong"
 			"pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong",
 			"stahp","i got u","wat","wat do", "cash me ousside","no plz no","ooo-wee","oof","big mood",
 			"im here", "relax bruh", "chill dawg", "naw, that aint me", "raspberry sherbert","get rekt skrub",
-			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","🍆🍑💦"];
+			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","🍆🍑💦","sup foo",
+      "leave me alone, I'm sleeping"];
 
 
 
@@ -88,11 +172,6 @@ bot.on('message', message => {
     var chan = message.channel.id;
     message.channel.send("Channel ID:"+chan);
   }
-
-	
-
-
-	
  
 
 });
@@ -113,18 +192,6 @@ bot.on('inviteCreate', invite => {
   inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
 
 
-  // var the_channel = GCM.resolve(invite.channel);
-
-  // Promise.resolve(NOTIFY_CHANNEL).then(function(chan) {
-  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
-  //   chan.send(inv_create_str);
-  // });
-
-  // var p = Promise.resolve(NOTIFY_CHANNEL);
-  // p.then(function(chan) {
-  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
-  //   chan.send(inv_create_str);
-  // });
 
   NOTIFY_CHANNEL.then(function(chan) {
       // here you can use the result of promiseB
@@ -132,7 +199,8 @@ bot.on('inviteCreate', invite => {
     chan.send(inv_create_str);
   });
 
-  // NOTIFY_CHANNEL.send(inv_create_str);
+  createMyInvite(invite)
+  
 
 });
 
@@ -141,12 +209,21 @@ bot.on('inviteDelete', invite => {
 
   console.log("Invite was deleted: "+invite.code);
 
+
+  var username="unknown";
+  if(invite.inviter && invite.inviter.username){
+    username=invite.inviter.username;
+  }
+
   var inv_create_str = "";
   inv_create_str += "Invite deleted, code: "+invite.code;
-  inv_create_str += "\n Inviter: "+invite.inviter.username;
+  inv_create_str += "\n Inviter: "+username;
   inv_create_str += "\n Created at: "+invite.createdAt;
   inv_create_str += "\n Expires at: "+invite.expiresAt;
   inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
+  inv_create_str += "\n Max Age: "+invite.maxAge;
+  inv_create_str += "\n Member count: "+invite.memberCount;
+  inv_create_str += "\n Uses: "+invite.uses;
   inv_create_str += "\n Channel: "+invite.channel;
   inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
 
@@ -167,13 +244,9 @@ bot.on('guildMemberAdd', gmember => {
 
   console.log("New Adventurer: "+gmember.user.username);
 
-  gmember.guild.fetchInvites()
-    .then(invites => {
-      console.log(`Fetched ${invites.size} invites`);
-      invites
-        .each(invite => console.log(invite.code))
-    })
-    .catch(console.error);
+  updateMyInvite(gmember);
+
+  
 
   
 
