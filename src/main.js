@@ -1,6 +1,7 @@
 // import the discord.js module
 const Discord = require('discord.js');
 const config = require('./config.js');
+var MongoClient = require('mongodb').MongoClient;
 
 const xpTrack = require('./xpTrack.js');
 
@@ -13,7 +14,6 @@ const bot = new Discord.Client();
 // the token of your bot - https://discordapp.com/developers/applications/me
 const token = config.token;
 const foo = "../foo.json";
-var my_invites={list:[]};
 var NOTIFY_CHANNEL;
 
 function getPong(max) {
@@ -28,7 +28,6 @@ function createMyInvite(invite) {
     inviterObj: {},
     maxUses: "unk",
     createdAt: "unk",
-    inviteName: "unk",
     expiresAt: "unk",
     uses: "unk",
     usedBy: []
@@ -45,13 +44,22 @@ function createMyInvite(invite) {
   inv.inviterObj=newb;
   inv.maxUses=invite.maxUses;
   inv.createdAt=invite.createdAt;
-  inv.inviteName=invite.inviteName;
   inv.expiresAt=invite.expiresAt;
   inv.uses=invite.uses;
 
-  my_invites.list.push(inv);
+  // my_invites.list.push(inv);
 
-  fs.writeFile(foo, JSON.stringify(my_invites), (err) => { if (err) throw err; });
+  // fs.writeFile(foo, JSON.stringify(my_invites), (err) => { if (err) throw err; });
+
+  MongoClient.connect(config.DB, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("MoeRSCVBotDB");
+    dbo.collection("invites").insertOne(inv, function(err, res) {
+      if (err) throw err;
+      console.log("1 document inserted");
+      db.close();
+    });
+  });
 }
 
 
@@ -63,33 +71,50 @@ function updateMyInvite(gmember) {
       console.log(`Fetched ${invites.size} invites`);
       invites
         .each(invite => {
-          var i;
-          for (i=0; i<my_invites.list.length; i++) {
-            var inv = my_invites.list[i];
-            // console.log("MOE_DEBUG code: "+inv.code+", "+invite.code);
-            if (inv.code==invite.code) {
-              // console.log("MOE_DEBUG uses: "+inv.uses+", "+invite.uses+", "+!isNaN(invite.uses));
-              if (notfound && invite.uses && !isNaN(invite.uses) && inv.uses != invite.uses) {
-                // console.log("MOE_DEBUG in: ");
-                notfound=false;
-                inv.uses = invite.uses;
-                var newb = {
-                  username: gmember.user.username,
-                  id: gmember.id
-                }
-                inv.usedBy.push(newb);
-              }
-            }
-            my_invites.list[i]=inv;
-
-            fs.writeFile(foo, JSON.stringify(my_invites), (err) => { if (err) throw err; });
-            // console.log("MOE_DEBUG: "+JSON.stringify(my_invites));
-          }
+          notfound = updateOneInvite(invite,gmember.user,notfound);
         })
     })
     .catch(console.error);
+}
 
+function updateOneInvite(invite,user,notfound=true){
 
+  MongoClient.connect(config.DB, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("MoeRSCVBotDB");
+
+    dbo.collection("invites").find({}).toArray(function(err, result) {
+      if (err) throw err;
+      // console.log(result);
+      var i;
+      for (i=0; i<result.length; i++) {
+        var inv = result[i];
+        // console.log("MOE_DEBUG code: "+inv.code+", "+invite.code);
+        if (inv.code==invite.code) {
+          // console.log("MOE_DEBUG uses: "+inv.uses+", "+invite.uses+", "+!isNaN(invite.uses));
+          if (notfound && invite.uses && !isNaN(invite.uses) && inv.uses != invite.uses) {
+            // console.log("MOE_DEBUG in: ");
+            notfound=false;
+            // inv.uses = invite.uses;
+            if(user&&user.username&&user.id){
+              var newb = {
+                username: user.username,
+                id: user.id
+              }
+              inv.usedBy.push(newb);
+            }
+            dbo.collection("invites").updateOne({code: inv.code},  {$set: {uses: inv.uses, usedBy: inv.usedBy}}, function(err, res) {
+              if (err) throw err;
+              console.log("Updated one invite: ");
+            });
+          }
+        }
+      }
+      db.close();
+    });
+
+  });
+  return notfound;
 }
 
 bot.on('ready', () => {
@@ -97,12 +122,6 @@ bot.on('ready', () => {
   NOTIFY_CHANNEL = bot.channels.fetch('741396405519908966'); // Channel to send notification
   // console.log('My notify channel is: '+NOTIFY_CHANNEL);
 
-  fs.readFile(foo, 'utf8', function readFileCallback(err, data){
-    if (err){
-        console.log(err);
-    } else {
-    my_invites = JSON.parse(data); 
-  }});
 });
 bot.on('error', function(err){
     // handle the error safely
@@ -153,32 +172,39 @@ bot.on('message', message => {
  
   if (is_admin && msgLC === 'who_used_invite') {
 
-    var i;
-    for (i=0; i<my_invites.list.length; i++) {
-      var inv = my_invites.list[i];
-      // console.log("MOE_DEBUG username: "+inv.inviterObj);
-       
-      if (inv.inviterObj && inv.inviterObj.username
-            && inv.uses > 0){
+    MongoClient.connect(config.DB, function(err, db) {
+      if (err) throw err;
+      var dbo = db.db("MoeRSCVBotDB");
 
-        var msg = "";
-        msg += "Invite code: "+inv.code;
-        msg += "\nInviter: "+inv.inviterObj.username;
-        msg += "\nInvitees: ";
-        var j;
-        for (j=0; j<inv.usedBy.length; j++) {
-          var newb = inv.usedBy[j];
-          if (newb.username) {
-            msg += newb.username+", ";
+      dbo.collection("invites").find({}).toArray(function(err, result) {
+        if (err) throw err;
+        var i;
+        for (i=0; i<result.length; i++) {
+          var inv = result[i];
+          // console.log("MOE_DEBUG username: "+inv.inviterObj);
+           
+          if (inv.inviterObj && inv.inviterObj.username
+                && inv.uses > 0){
+
+            var msg = "";
+            msg += "Invite code: "+inv.code;
+            msg += "\nInviter: "+inv.inviterObj.username;
+            msg += "\nInvitees: ";
+            var j;
+            for (j=0; j<inv.usedBy.length; j++) {
+              var newb = inv.usedBy[j];
+              if (newb.username) {
+                msg += newb.username+", ";
+              }
+            }
+            message.channel.send(msg);
           }
         }
-        message.channel.send(msg);
-      }
-    }
 
-    
+        db.close();
+      });
+    });
   }
-
 });
 
 
@@ -209,6 +235,16 @@ bot.on('inviteCreate', invite => {
 bot.on('inviteDelete', invite => {
 
   console.log("Invite was deleted: "+invite.code);
+
+  MongoClient.connect(config.DB, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("MoeRSCVBotDB");
+    dbo.collection("invites").updateOne({code: invite.code},  {$set: {uses: invite.uses}}, function(err, res) {
+      if (err) throw err;
+      console.log("Updated one deleted invites uses.");
+      db.close();
+    });
+  });       
 
   var username="unknown";
   if(invite.inviter && invite.inviter.username){
