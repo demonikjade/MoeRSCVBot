@@ -112,7 +112,7 @@ const pingList = ["pong","pong","pong","pong","pong","pong","pong","pong","pong"
 			"pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong",
 			"stahp","i got u","wat","wat do", "cash me ousside","no plz no","ooo-wee","oof","big mood",
 			"im here", "relax bruh", "chill dawg", "naw, that aint me", "raspberry sherbert","get rekt skrub",
-			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","sup foo",
+			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","sup foo", "moar shrimp bby plz",
       "leave me alone, I'm sleeping", "I swear to Guthix, I will high alch you",
       "Roses are red,\nviolets are blue,\ngimme dat rune,\nill trim 4 you",
       "Do you have 99 thieving?\nBecause you just stole my heart💙"];
