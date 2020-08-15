@@ -2,6 +2,9 @@
 const Discord = require('discord.js');
 const config = require('./config.js');
 
+const xpTrack = require('./xpTrack.js');
+
+
 var fs = require('fs');
 
 // create an instance of a Discord Client, and call it bot
@@ -244,6 +247,46 @@ bot.on('guildMemberAdd', gmember => {
 
 
 
+const announceList = [
+  // {day:0, hour:0, minute:9, func: xpTrack.getWebsiteXp()},
+  {day:0, hour:0, minute:9, func:"getWebsiteXp"}
+];
+
+setInterval(function() {
+    var d = new Date();
+    // NOTIFY_CHANNEL.send("DEBUG: Day is:"+d.getDay()
+    //               +", Hour is:"+d.getHours()
+    //               +" Minute is:"+d.getMinutes());
+
+    for (const item of announceList) {
+    // console.log(item);
+    if(item.day == d.getDay() 
+          && item.hour == d.getHours()
+          && item.minute == d.getMinutes()){
+          // ){
+
+        // if(item.remind){
+        //   var msg = " **"+item.day_word+" is coming, my dudes!!**";
+        //   NOTIFY_CHANNEL.send(item.role_id + msg + reminder + item.meet);
+        // }else{
+        //   var msg = " **It is "+item.day_word+" my dudes!!**";
+        //   NOTIFY_CHANNEL.send(item.role_id + msg + announce + item.meet)
+        //     .then(message => {
+        //       message.react('🇾')
+        //       .then(() => message.react('❔'))
+        //       .then(() => message.react('🇳'))
+        //       .catch(() => console.error('One of the emojis failed to react.'));
+        //   });
+        // }
+        if("getWebsiteXp"){
+          xpTrack.getWebsiteXp();
+        }
+
+      }
+  } 
+
+   
+}, 30 * 1000); // Check every minute
 
 // log our bot in
 try{
