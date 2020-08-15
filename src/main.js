@@ -1,19 +1,17 @@
-
 // import the discord.js module
 const Discord = require('discord.js');
 const config = require('./config.js');
 
+var fs = require('fs');
 
 // create an instance of a Discord Client, and call it bot
 const bot = new Discord.Client();
-// const GCM = new Discord.GuildChannelManager();
 
 // the token of your bot - https://discordapp.com/developers/applications/me
 const token = config.token;
-
-var fs = require('fs');
-
+const foo = "../foo.json";
 var my_invites={list:[]};
+var NOTIFY_CHANNEL;
 
 function getPong(max) {
   max = Math.floor(max);
@@ -21,7 +19,6 @@ function getPong(max) {
 }
 
 function createMyInvite(invite) {
-
   var inv = {
     code: "unk",
     channelName: "unk",
@@ -51,13 +48,11 @@ function createMyInvite(invite) {
 
   my_invites.list.push(inv);
 
-
-  fs.writeFile('foo.json', JSON.stringify(my_invites), (err) => { if (err) throw err; });
+  fs.writeFile(foo, JSON.stringify(my_invites), (err) => { if (err) throw err; });
 }
 
 
 function updateMyInvite(gmember) {
-
   var notfound=true;
 
   gmember.guild.fetchInvites()
@@ -84,7 +79,7 @@ function updateMyInvite(gmember) {
             }
             my_invites.list[i]=inv;
 
-            fs.writeFile('foo.json', JSON.stringify(my_invites), (err) => { if (err) throw err; });
+            fs.writeFile(foo, JSON.stringify(my_invites), (err) => { if (err) throw err; });
             // console.log("MOE_DEBUG: "+JSON.stringify(my_invites));
           }
         })
@@ -94,22 +89,16 @@ function updateMyInvite(gmember) {
 
 }
 
-// the ready event is vital, it means that your bot will only start reacting to information
-// from Discord _after_ ready is emitted.
-var NOTIFY_CHANNEL;
 bot.on('ready', () => {
   console.log('I am ready!');
   NOTIFY_CHANNEL = bot.channels.fetch('741396405519908966'); // Channel to send notification
-  console.log('My notify channel is: '+NOTIFY_CHANNEL);
+  // console.log('My notify channel is: '+NOTIFY_CHANNEL);
 
-  fs.readFile('foo.json', 'utf8', function readFileCallback(err, data){
+  fs.readFile(foo, 'utf8', function readFileCallback(err, data){
     if (err){
         console.log(err);
     } else {
-    my_invites = JSON.parse(data); //now it an object
-    // obj.table.push({id: 2, square:3}); //add some data
-    // json = JSON.stringify(obj); //convert it back to json
-    // fs.writeFile('myjsonfile.json', json, 'utf8', callback); // write it back 
+    my_invites = JSON.parse(data); 
   }});
 });
 bot.on('error', function(err){
@@ -119,31 +108,18 @@ bot.on('error', function(err){
 
 
 
-
-// {day:0, hour:8, minute:9, role_id:"<@&651108830956224515>", 
-	// 	day_word:"Sunday", meet:"Tribe at 11:30am!",remind:false},
-	// {day:6, hour:18, minute:9, role_id:"<@&651108830956224515>", 
-	// 	day_word:"Sunday", meet:"Tribe at 11:30am!",remind:true},
-
 const pingList = ["pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong",
 			"pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong","pong",
 			"stahp","i got u","wat","wat do", "cash me ousside","no plz no","ooo-wee","oof","big mood",
 			"im here", "relax bruh", "chill dawg", "naw, that aint me", "raspberry sherbert","get rekt skrub",
-			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","🍆🍑💦","sup foo",
+			"roundtrip 24.7ms\n...lol not really", "🇾", "💖💞💝", "㊙️","sup foo",
       "leave me alone, I'm sleeping", "I swear to Guthix, I will high alch you",
       "Roses are red,\nviolets are blue,\ngimme dat rune,\nill trim 4 you",
-      "Do you have 99 thieving?\nBecause you just stole my heart💙", "no I'm as broken as witches house"];
-
-
-
-
+      "Do you have 99 thieving?\nBecause you just stole my heart💙"];
 
 
 // create an event listener for messages
 bot.on('message', message => {
-	// user_active.time_stamp(message.author);
-
- //  // console.log(message.content.toLowerCase());
   
   var is_admin = false;
   if( message.member){
@@ -152,14 +128,12 @@ bot.on('message', message => {
 
   const msgLC = message.content.toLowerCase();
 
-
   if (msgLC === 'ping') {
     // send "pong" to the same channel.
     var msg = pingList[getPong(pingList.length-1)];
     message.channel.send(msg);
   }
   if (msgLC === 'reactt') {
-    // send "pong" to the same channel.
     message.channel.send('react??')
     		.then(message => {
     			message.react('🇾')
@@ -170,14 +144,39 @@ bot.on('message', message => {
   }
 
   if (is_admin && msgLC === 'need_chan_id') {
-    // send "pong" to the same channel.
     var chan = message.channel.id;
     message.channel.send("Channel ID:"+chan);
   }
  
+  if (is_admin && msgLC === 'who_used_invite') {
+
+    var i;
+    for (i=0; i<my_invites.list.length; i++) {
+      var inv = my_invites.list[i];
+      // console.log("MOE_DEBUG username: "+inv.inviterObj);
+       
+      if (inv.inviterObj && inv.inviterObj.username
+            && inv.uses > 0){
+
+        var msg = "";
+        msg += "Invite code: "+inv.code;
+        msg += "\nInviter: "+inv.inviterObj.username;
+        msg += "\nInvitees: ";
+        var j;
+        for (j=0; j<inv.usedBy.length; j++) {
+          var newb = inv.usedBy[j];
+          if (newb.username) {
+            msg += newb.username+", ";
+          }
+        }
+        message.channel.send(msg);
+      }
+    }
+
+    
+  }
 
 });
-
 
 
 bot.on('inviteCreate', invite => {
@@ -193,16 +192,13 @@ bot.on('inviteCreate', invite => {
   inv_create_str += "\n Channel: "+invite.channel;
   inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
 
-
-
   NOTIFY_CHANNEL.then(function(chan) {
       // here you can use the result of promiseB
     console.log("Resolved Chan ID: "+chan.id); // "Success"
     chan.send(inv_create_str);
   });
 
-  createMyInvite(invite)
-  
+  createMyInvite(invite);
 
 });
 
@@ -211,7 +207,6 @@ bot.on('inviteDelete', invite => {
 
   console.log("Invite was deleted: "+invite.code);
 
-
   var username="unknown";
   if(invite.inviter && invite.inviter.username){
     username=invite.inviter.username;
@@ -219,17 +214,15 @@ bot.on('inviteDelete', invite => {
 
   var inv_create_str = "";
   inv_create_str += "Invite deleted, code: "+invite.code;
-  inv_create_str += "\n Inviter: "+username;
-  inv_create_str += "\n Created at: "+invite.createdAt;
-  inv_create_str += "\n Expires at: "+invite.expiresAt;
-  inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
-  inv_create_str += "\n Max Age: "+invite.maxAge;
-  inv_create_str += "\n Member count: "+invite.memberCount;
-  inv_create_str += "\n Uses: "+invite.uses;
+  // inv_create_str += "\n Inviter: "+username;
+  // inv_create_str += "\n Created at: "+invite.createdAt;
+  // inv_create_str += "\n Expires at: "+invite.expiresAt;
+  // inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
+  // inv_create_str += "\n Max Age: "+invite.maxAge;
+  // inv_create_str += "\n Member count: "+invite.memberCount;
+  // inv_create_str += "\n Uses: "+invite.uses;
   inv_create_str += "\n Channel: "+invite.channel;
   inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
-
-
 
   NOTIFY_CHANNEL.then(function(chan) {
       // here you can use the result of promiseB
@@ -240,34 +233,11 @@ bot.on('inviteDelete', invite => {
 });
 
 
-
-
 bot.on('guildMemberAdd', gmember => {
 
-  console.log("New Adventurer: "+gmember.user.username);
+  // console.log("New Adventurer: "+gmember.user.username);
 
   updateMyInvite(gmember);
-
-  
-
-  
-
-  // var inv_create_str = "";
-  // inv_create_str += "Invite deleted, code: "+invite.code;
-  // inv_create_str += "\n Inviter: "+invite.inviter.username;
-  // inv_create_str += "\n Created at: "+invite.createdAt;
-  // inv_create_str += "\n Expires at: "+invite.expiresAt;
-  // inv_create_str += "\n Maximum amount of uses: "+invite.maxUses;
-  // inv_create_str += "\n Channel: "+invite.channel;
-  // inv_create_str += "\n Channel name: "+invite.guild.channels.resolve(invite.channel.id).toString();
-
-
-
-  // NOTIFY_CHANNEL.then(function(chan) {
-  //     // here you can use the result of promiseB
-  //   console.log("Resolved Chan ID: "+chan.id); // "Success"
-  //   chan.send(inv_create_str);
-  // });
 
 });
 
