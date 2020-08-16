@@ -320,8 +320,8 @@ setInterval(function() {
         //       .catch(() => console.error('One of the emojis failed to react.'));
         //   });
         // }
-        if("getWebsiteXp"){
-          xpTrack.getWebsiteXp();
+        if(item.func == "getWebsiteXp"){
+          // xpTrack.getWebsiteXp();
         }
 
       }
