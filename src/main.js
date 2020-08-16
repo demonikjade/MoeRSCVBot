@@ -4,6 +4,7 @@ const config = require('./config.js');
 var MongoClient = require('mongodb').MongoClient;
 
 const xpTrack = require('./xpTrack.js');
+const invites = require('./invites.js'); // invites.processesMemberLeave();
 
 
 var fs = require('fs');
