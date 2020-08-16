@@ -205,6 +205,12 @@ bot.on('message', message => {
       });
     });
   }
+
+  if(msgLC === 'get_xp_fresh'){
+    var retval = xpTrack.getWebsiteXp();
+    message.channel.send(retval);
+    // message.delete({ timeout: 5000 });
+  }
 });
 
 
