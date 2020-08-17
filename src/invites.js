@@ -1,5 +1,6 @@
 
-
+const config = require('./config.js');
+var MongoClient = require('mongodb').MongoClient;
 
 
 function getTimestamp(){
@@ -55,20 +56,22 @@ function processesCreateInvite(invite){
   MongoClient.connect(config.DB, function(err, db) {
     if (err) throw err;
     var dbo = db.db("MoeRSCVBotDB");
-    dbo.collection("invites").insertOne(v, function(err, res) {
-      if (err) throw err;
-      console.log("1 inv inserted");
-      var tally=getTally(invite);
-      var gmemberTally = {
-        timestamp: getTimestamp(),
-        tally: tally
-      };
-      dbo.collection("gmemberTallies").insertOne(gmemberTally, function(err, res) {
-        if (err) throw err;
-        console.log("1 gmemberTally inserted");
-        db.close();
-      });
-    });
+    try {
+      dbo.collection("invites").insertOne( inv );
+    } catch (e) {
+      print (e);
+    };
+
+    var tally=getTally(invite);
+    var gmemberTally = {
+      timestamp: getTimestamp(),
+      tally: tally
+    };
+    try {
+      dbo.collection("gmemberTallies").insertOne( gmemberTally );
+    } catch (e) {
+      print (e);
+    };
   });
 }
 
@@ -84,24 +87,17 @@ function processesDeleteInvite(invite){
     if (err) throw err;
     var dbo = db.db("MoeRSCVBotDB");
 
-    var inv = dbo.collection("invites").findOne({ code: invite.code });
-    
     //Check if uses match, if no match: check for member add nearest similar timestamp of deleted invite.
-    if(inv.uses != invite.uses){
-      //find the member
-      // no, tag the invite as 'deleted-not-used'
-      try {
-        dbo.collection("invites").updateOne(
-          { "code" : inv.uses },
-          { $set: { "timestamp" : getTimestamp() , deleted: true } }
-        );
-      } catch (e) {
-        print(e);
-      }
+    try {
+      dbo.collection("invites").updateOne(
+        { "code" : invite.code },
+        { $set: { "timestamp": getTimestamp() , "deleted": true } }
+      );
+    } catch (e) {
+      print(e);
     }
 
     //If no member add around timestamp of deleted invite, ignore. 
-
     db.close();
   });  
 }
@@ -140,7 +136,7 @@ function processesMemberAdded(gmember){
   //Get all invites from Discord, and check uses against database invites/uses. 
   var notfound=true;
   var dt = getTimestamp(); // hoping that the add event is real close to NOW
-  var closestInv = {timestamp:9999999999};
+  var closestInv = {code: "nope",uses:-1,timestamp:9999999999, usedBy: []};
   var user = gmember.user;
   MongoClient.connect(config.DB, function(err, db) {
     if (err) throw err;
@@ -161,10 +157,7 @@ function processesMemberAdded(gmember){
               }
               inv.usedBy.push(newb);
             }
-            dbo.collection("invites").updateOne({code: inv.code},  {$set: {uses: inv.uses, usedBy: inv.usedBy}}, function(err, res) {
-              if (err) throw err;
-              console.log("Updated one invite: ");
-            });
+            closestInv = inv;
           }
           if(inv.deleted && inv.timestamp && closestInv.timestamp > Math.abs(inv.timestamp - dt)){
             // closest is big, meaning temporally far away
@@ -181,21 +174,63 @@ function processesMemberAdded(gmember){
           }
           closestInv.usedBy.push(newb);
         }
-        dbo.collection("invites").updateOne({code: closestInv.code},  {$set: {uses: closestInv.uses, usedBy: closestInv.usedBy}}, function(err, res) {
-          if (err) throw err;
-          console.log("Updated one invite: ");
-        });
       }
-      db.close();
+      console.log("JG_DEBUG: found closestInv: "+closestInv.code+" for user: "+user.username);
+      //finally, whatever we found, update
+      try {
+        dbo.collection("invites").updateOne({"code": closestInv.code},
+          {$set: {"uses": closestInv.uses, "usedBy": closestInv.usedBy}}
+        );
+      } catch (e) {
+        print(e);
+      } finally {
+        db.close();
+      }
     }); // end dbo find all
   }); // end client
 }
 
 
+function messageInvitePairings(message){
+  MongoClient.connect(config.DB, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("MoeRSCVBotDB");
+
+    dbo.collection("invites").find({}).toArray(function(err, result) {
+      if (err) throw err;
+      var i;
+      for (i=0; i<result.length; i++) {
+        var inv = result[i];
+        // console.log("MOE_DEBUG username: "+inv.inviterObj);
+         
+        if (inv.inviterObj && inv.inviterObj.username
+              && inv.uses > 0){
+
+          var msg = "";
+          msg += "Invite code: "+inv.code;
+          msg += "\nInviter: "+inv.inviterObj.username;
+          msg += "\nInvitees: ";
+          var j;
+          for (j=0; j<inv.usedBy.length; j++) {
+            var newb = inv.usedBy[j];
+            if (newb.username) {
+              msg += newb.username+", ";
+            }
+          }
+          message.channel.send(msg);
+        }
+      }
+
+      db.close();
+    });
+  });
+}
 
 module.exports = {
   processesCreateInvite : processesCreateInvite,
   processesDeleteInvite : processesDeleteInvite,
   processesMemberLeave : processesMemberLeave,
   processesMemberAdded : processesMemberAdded,
+  processesMemberAdded : processesMemberAdded,
+  messageInvitePairings : messageInvitePairings,
 }
