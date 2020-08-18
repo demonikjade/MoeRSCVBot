@@ -140,7 +140,7 @@ bot.on('guildMemberRemove', gmember => {
 bot.on('guildMemberAdd', gmember => {
 
   // console.log("New Adventurer: "+gmember.user.username);
-
+  
   invites.processesMemberAdded(gmember);
 
 });
@@ -173,7 +173,7 @@ setInterval(function() {
     }
   } 
 
-}, 30 * 1000); // Check every minute
+}, 60 * 1000); // Check every minute
 
 // log our bot in
 try{
