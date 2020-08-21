@@ -5,6 +5,7 @@ var MongoClient = require('mongodb').MongoClient;
 
 const xpTrack = require('./xpTrack.js');
 const invites = require('./invites.js'); // invites.processesMemberLeave();
+const altsTrack = require('./altsTrack.js');
 
 
 // create an instance of a Discord Client, and call it bot
@@ -74,6 +75,11 @@ bot.on('message', message => {
  
   if (is_admin && msgLC === 'who_used_invite') {
     invites.messageInvitePairings(message);
+  }
+ 
+  if (!message.author.bot && msgLC.includes("!alt")) {
+    var retval = altsTrack.processesNewMessage(message, is_admin);
+    message.channel.send(retval);
   }
 
   if(msgLC === 'get_xp_fresh'){
