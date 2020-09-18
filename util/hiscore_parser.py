@@ -40,7 +40,8 @@ full_text = req.text
 
 page_links = full_text.split("<li><a class=\"text\" href=\"https://www.runescapeclassic.org/hiscore/ranking/overall/p")[3].split("/\">")
 
-print(page_links[0])
+num_pages = page_links[0]
+print(num_pages)
 
 # col1_raws = full_text.split("<td class=\"col1 ally-right\">")
 # # col1_test = col1_raws[1]
